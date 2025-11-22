@@ -1,10 +1,18 @@
+require('dotenv').config();
+const { createClient } = require('@supabase/supabase-js');
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE
+);
+
 const express = require('express');
 const multer  = require('multer');
 const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
 
-// Admin şifresi artık environment'tan okunuyor
+
 const ADMIN_SECRET = process.env.ADMIN_SECRET || 'dev-secret';
 
 const app = express();
@@ -17,18 +25,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(cors());
 app.use(express.json());
 
-// --- MULTER (UPLOAD) ---
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/');
-  },
-  filename: function (req, file, cb) {
-    cb(null, file.originalname);
-  }
-});
+// --- MULTER (MEMORY STORAGE) ---
+const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// --- DOCUMENTS JSON HELPER ---
+// --- DOCUMENTS.JSON ---
 const docsPath = path.join(__dirname, 'documents.json');
 
 function readDocuments() {
@@ -43,7 +44,7 @@ function writeDocuments(docs) {
   fs.writeFileSync(docsPath, JSON.stringify(docs, null, 2), 'utf8');
 }
 
-// --- GET: TÜM DOKÜMANLAR ---
+// --- GET ALL DOCUMENTS ---
 app.get('/api/documents', (req, res) => {
   try {
     const docs = readDocuments();
@@ -54,8 +55,8 @@ app.get('/api/documents', (req, res) => {
   }
 });
 
-// --- POST: UPLOAD YENİ DOKÜMAN ---
-app.post('/api/upload', upload.single('file'), (req, res) => {
+// --- UPLOAD DOCUMENT (Supabase) ---
+app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
     const { title, description, date, type, secret } = req.body;
 
@@ -66,6 +67,27 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
       return res.status(400).json({ error: 'File is required' });
     }
 
+    const safeOriginalName = req.file.originalname.replace(/\s+/g, '_');
+    const fileName = `${Date.now()}-${safeOriginalName}`;
+
+    // --- Supabase upload (bucket: atlas-documents) ---
+    const { error: uploadError } = await supabase.storage
+      .from('atlas-documents')
+      .upload(fileName, req.file.buffer, {
+        contentType: req.file.mimetype || 'application/pdf',
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('Supabase upload error:', uploadError);
+      return res.status(500).json({ error: 'Failed to upload to Supabase' });
+    }
+
+    // Public URL
+    const { data: urlData } = supabase.storage
+      .from('atlas-documents')
+      .getPublicUrl(fileName);
+
     const docs = readDocuments();
     const newId = (docs[docs.length - 1]?.id || 0) + 1;
 
@@ -75,7 +97,8 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
       description: description || '',
       date: date || new Date().toISOString().slice(0, 10),
       type: type || 'PDF',
-      file: req.file.filename
+      file: fileName,
+      url: urlData.publicUrl || ''
     };
 
     docs.push(newDoc);
@@ -88,10 +111,11 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   }
 });
 
-// --- PUT: DOKÜMAN METADATA GÜNCELLE ---
+// --- UPDATE DOCUMENT ---
 app.put('/api/documents/:id', (req, res) => {
   try {
     const { secret, title, description, date, type } = req.body;
+
     if (secret !== ADMIN_SECRET) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -117,10 +141,11 @@ app.put('/api/documents/:id', (req, res) => {
   }
 });
 
-// --- POST: DOKÜMAN SİL ---
-app.post('/api/documents/delete', (req, res) => {
+// --- DELETE DOCUMENT (Supabase) ---
+app.post('/api/documents/delete', async (req, res) => {
   try {
     const { id, secret } = req.body;
+
     if (secret !== ADMIN_SECRET) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -136,15 +161,14 @@ app.post('/api/documents/delete', (req, res) => {
     const [removed] = docs.splice(index, 1);
     writeDocuments(docs);
 
-    // PDF dosyasını da silmeye çalış
+    // --- Supabase delete ---
     if (removed && removed.file) {
-      const filePath = path.join(__dirname, 'uploads', removed.file);
-      try {
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      } catch (fileErr) {
-        console.warn('Warning: could not delete file', filePath, fileErr);
+      const { error: delError } = await supabase.storage
+        .from('atlas-documents')
+        .remove([removed.file]);
+
+      if (delError) {
+        console.warn('Warning: could not delete file from Supabase', delError);
       }
     }
 
