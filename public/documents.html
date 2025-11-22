@@ -84,11 +84,9 @@
 
     try {
       const resp = await fetch('/api/documents');
-      if (!resp.ok) {
-        throw new Error('HTTP ' + resp.status);
-      }
-      const docs = await resp.json();
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
 
+      const docs = await resp.json();
       if (!Array.isArray(docs) || docs.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4">No documents uploaded yet.</td></tr>';
         return;
@@ -96,6 +94,12 @@
 
       docs.forEach(doc => {
         const tr = document.createElement('tr');
+
+        // SUPABASE
+        const fileUrl = doc.url
+  ? doc.url                          // Supabase
+  : `assets/pdf/${doc.file}`;        // Eski iki PDF için
+
 
         tr.innerHTML = `
           <td>
@@ -105,11 +109,11 @@
           <td>${doc.date || ''}</td>
           <td>${doc.type || 'PDF'}</td>
           <td>
-            <a href="/uploads/${doc.file}"
+            <a href="${fileUrl}"
                class="btn-download"
                target="_blank"
                rel="noopener">
-               Download
+               View
             </a>
           </td>
         `;
