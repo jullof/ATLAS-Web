@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATLAS | Autonomous Patrol Swarm</title>
+    <link rel="stylesheet" href="css/style.css">
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const body = document.body;
+        const toggleBtn = document.getElementById('theme-toggle');
+        if (!toggleBtn) return;
+
+        function applyTheme(theme) {
+          if (theme === 'light') {
+            body.classList.add('light-theme');
+          } else {
+            body.classList.remove('light-theme');
+          }
+
+          const isLight = body.classList.contains('light-theme');
+          toggleBtn.textContent = isLight ? '☾ Dark theme' : '☀ Light theme';
+        }
+
+        const storedTheme = localStorage.getItem('atlas-theme');
+        const initialTheme = storedTheme || 'dark'; // Varsayılan: dark
+        applyTheme(initialTheme);
+
+        toggleBtn.addEventListener('click', function () {
+          const isLight = body.classList.contains('light-theme');
+          const newTheme = isLight ? 'dark' : 'light';
+          applyTheme(newTheme);
+          localStorage.setItem('atlas-theme', newTheme);
+        });
+      });
+    </script>
+</head>
+<body>
+
+<header>
+    <div class="logo">ATLAS SWARM</div>
+    <nav>
+        <a href="index.html" style="color: #3399ff;">Home</a>
+        <a href="documents.html">Documents</a>
+        <a href="contact.html">Contact</a>
+    </nav>
+    <button id="theme-toggle" class="theme-toggle" type="button">☀ Light theme</button>
+</header>
+
+<div class="hero">
+    <h1>ATLAS</h1>
+    <p>Autonomous Threat Localization and Avoidance System</p>
+    <p style="font-size: 0.9rem; color: #3399ff; letter-spacing: 2px;">PERSISTENT • COORDINATED • INTELLIGENT</p>
+
+    <a href="documents.html" class="hero-cta">View Project Documents</a>
+</div>
+
+
+<div class="container">
+    
+    <div class="mission-box">
+        <h2>Mission of the Project</h2>
+        <p>
+            Our mission is to develop an <strong>autonomous drone swarm system</strong> capable of performing continuous day-and-night patrols over large and complex border areas. 
+            Using cooperative UAVs, the system detects unauthorized crossings, tracks moving targets, and provides real-time intelligence to a central monitoring dashboard.
+        </p>
+    </div>
+
+    <hr style="border: 0; border-top: 1px solid #444; margin: 40px 0;">
+
+    <h2>Key Capabilities</h2>
+    <div class="features-grid">
+        
+        <div class="feature-card">
+            <img src="https://images.unsplash.com/photo-1506947411487-a56738267384?auto=format&fit=crop&w=400&q=80" alt="Drone Swarm">
+            <h3>1. Drone Coordination</h3>
+            <p>Each UAV communicates with its peers to divide patrol zones efficiently and prevent overlap.</p>
+        </div>
+
+        <div class="feature-card">
+            <img src="https://images.unsplash.com/photo-1579829366248-204fe8413f31?auto=format&fit=crop&w=400&q=80" alt="Threat Detection">
+            <h3>2. Threat Detection</h3>
+            <p>Onboard AI models identify unauthorized movements or suspicious activities in real-time.</p>
+        </div>
+
+        <div class="feature-card">
+            <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=400&q=80" alt="Target Tracking">
+            <h3>3. Target Tracking</h3>
+            <p>The swarm dynamically reassigns drones to persistently follow moving targets across sectors.</p>
+        </div>
+
+        <div class="feature-card">
+            <img src="https://plus.unsplash.com/premium_photo-1681487814165-018814e29155?auto=format&fit=crop&w=400&q=80" alt="Dashboard">
+            <h3>4. Live Dashboard</h3>
+            <p>All telemetry and video feeds are streamed securely to a central command interface.</p>
+        </div>
+
+    </div>
+
+</div>
+
+<footer>
+    border.swarm.project@gmail.com | TED University | Ankara, Türkiye
+</footer>
+
+</body>
+</html>

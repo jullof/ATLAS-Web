@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ATLAS Admin – Upload Document</title>
+  <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    .admin-wrapper {
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 20px;
+      background-color: #252525;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    body.light-theme .admin-wrapper {
+      background-color: #ffffff;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+    .admin-wrapper h1 {
+      border-bottom: none;
+      margin-bottom: 10px;
+    }
+
+    .admin-wrapper label {
+      display: block;
+      margin-top: 12px;
+      font-size: 0.9rem;
+    }
+
+    .admin-wrapper input[type="text"],
+    .admin-wrapper input[type="date"],
+    .admin-wrapper textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background-color: #1a1a1a;
+      color: #eee;
+    }
+    body.light-theme .admin-wrapper input[type="text"],
+    body.light-theme .admin-wrapper input[type="date"],
+    body.light-theme .admin-wrapper textarea {
+      background-color: #ffffff;
+      color: #111;
+      border: 1px solid #ccc;
+    }
+
+    .admin-wrapper input[type="file"] {
+      margin-top: 6px;
+    }
+
+    .admin-submit {
+      margin-top: 18px;
+      padding: 9px 20px;
+      border-radius: 999px;
+      border: none;
+      background-color: #3399ff;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .admin-submit:hover {
+      background-color: #1f7cdb;
+    }
+
+    .msg { margin-top: 12px; font-size: 0.9rem; }
+
+    /* --- DOCUMENT LIST TABLE --- */
+    .admin-docs {
+      max-width: 900px;
+      margin: 40px auto 0 auto;
+      padding: 20px;
+      background-color: #252525;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    body.light-theme .admin-docs {
+      background-color: #ffffff;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 0.9rem;
+    }
+
+    .admin-table th, .admin-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #444;
+    }
+    body.light-theme .admin-table th, body.light-theme .admin-table td {
+      border-bottom: 1px solid #ddd;
+    }
+
+    .btn-small {
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: none;
+      font-size: 0.8rem;
+      cursor: pointer;
+      margin-right: 4px;
+    }
+    .btn-edit { background-color: #ffb74d; color: #111; }
+    .btn-delete { background-color: #e53935; color: #fff; }
+
+    /* Admin password panel */
+    .pass-box {
+      margin: 20px auto;
+      padding: 12px;
+      max-width: 350px;
+      border-radius: 8px;
+      background: #1f1f1f;
+      border: 1px solid #444;
+      color: #ccc;
+      text-align: center;
+    }
+    body.light-theme .pass-box {
+      background: #f0f0f0;
+      border: 1px solid #ccc;
+      color: #111;
+    }
+    .pass-box input {
+      margin-top: 8px;
+      width: 80%;
+      padding: 7px 10px;
+      border-radius: 5px;
+      border: 1px solid #555;
+      background: #111;
+      color: white;
+    }
+    body.light-theme .pass-box input {
+      background: #fff;
+      color: #111;
+      border: 1px solid #ccc;
+    }
+
+    .pass-box button {
+      margin-top: 10px;
+      padding: 6px 18px;
+      background-color: #3399ff;
+      border: none;
+      color: white;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+    .pass-box button:hover {
+      background-color: #1f7cdb;
+    }
+  </style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const body = document.body;
+  const toggleBtn = document.getElementById("theme-toggle");
+
+  // Theme
+  function applyTheme(theme) {
+    if (theme === "light") body.classList.add("light-theme");
+    else body.classList.remove("light-theme");
+    if (toggleBtn) {
+      toggleBtn.textContent = body.classList.contains("light-theme")
+        ? "☾ Dark theme"
+        : "☀ Light theme";
+    }
+  }
+
+  const stored = localStorage.getItem("atlas-theme");
+  applyTheme(stored || "dark");
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+      const isLight = body.classList.contains("light-theme");
+      const newTheme = isLight ? "dark" : "light";
+      applyTheme(newTheme);
+      localStorage.setItem("atlas-theme", newTheme);
+    });
+  }
+
+  // -------- ADMIN PASSWORD -------
+  let adminSecret = "";
+  const passInput = document.getElementById("admin-password");
+  const passBtn = document.getElementById("admin-pass-btn");
+  const passMsg = document.getElementById("admin-pass-msg");
+
+  passBtn.addEventListener("click", () => {
+    const v = passInput.value.trim();
+    if (!v) {
+      passMsg.textContent = "Password cannot be empty.";
+      passMsg.style.color = "#e53935";
+      return;
+    }
+    adminSecret = v;
+    passMsg.textContent = "Password set.";
+    passMsg.style.color = "#43a047";
+  });
+
+  // -------- UPLOAD FORM --------
+  const form = document.getElementById("upload-form");
+  const msg = document.getElementById("msg");
+  const docsTbody = document.getElementById("admin-docs-body");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    if (!adminSecret) {
+      msg.textContent = "❌ Enter admin password first.";
+      msg.style.color = "#e53935";
+      return;
+    }
+
+    msg.textContent = "Uploading...";
+    const fd = new FormData(form);
+    fd.append("secret", adminSecret);
+
+    try {
+      const resp = await fetch("/api/upload", {
+        method: "POST",
+        body: fd
+      });
+      const data = await resp.json();
+
+      if (resp.ok) {
+        msg.textContent = "✔ Uploaded.";
+        msg.style.color = "#43a047";
+        form.reset();
+        loadDocuments();
+      } else {
+        msg.textContent = "❌ Error: " + (data.error || "Upload failed");
+        msg.style.color = "#e53935";
+      }
+
+    } catch (err) {
+      console.error(err);
+      msg.textContent = "❌ Network error.";
+      msg.style.color = "#e53935";
+    }
+  });
+
+  // -------- LOAD DOCUMENTS TABLE -------
+  async function loadDocuments() {
+    docsTbody.innerHTML = "<tr><td colspan='5'>Loading...</td></tr>";
+
+    try {
+      const resp = await fetch("/api/documents");
+      const docs = await resp.json();
+
+      if (!docs.length) {
+        docsTbody.innerHTML = "<tr><td colspan='5'>No documents.</td></tr>";
+        return;
+      }
+
+      docsTbody.innerHTML = "";
+      docs.forEach((doc) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${doc.id}</td>
+          <td><strong>${doc.title}</strong><br><span style="font-size:0.8rem;color:#aaa;">${doc.description || ""}</span></td>
+          <td>${doc.date || ""}</td>
+          <td>${doc.type || "PDF"}</td>
+          <td>
+            <button class="btn-small btn-edit" data-id="${doc.id}">Edit</button>
+            <button class="btn-small btn-delete" data-id="${doc.id}">Delete</button>
+          </td>
+        `;
+        docsTbody.appendChild(tr);
+      });
+    } catch (err) {
+      console.error(err);
+      docsTbody.innerHTML = "<tr><td colspan='5'>Error loading.</td></tr>";
+    }
+  }
+
+  loadDocuments();
+
+  // -------- EDIT & DELETE --------
+  docsTbody.addEventListener("click", async (e) => {
+    const target = e.target;
+    const id = target.getAttribute("data-id");
+    if (!id) return;
+
+    if (!adminSecret) {
+      alert("Enter admin password first.");
+      return;
+    }
+
+    // DELETE
+    if (target.classList.contains("btn-delete")) {
+      if (!confirm("Delete this document?")) return;
+
+      try {
+        const resp = await fetch("/api/documents/delete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, secret: adminSecret })
+        });
+
+        const data = await resp.json();
+        if (resp.ok) loadDocuments();
+        else alert("Delete error: " + data.error);
+
+      } catch {
+        alert("Network error.");
+      }
+    }
+
+    // EDIT
+    if (target.classList.contains("btn-edit")) {
+      const row = target.closest("tr");
+
+      const currentTitle = row.children[1].querySelector("strong").textContent;
+      const currentDesc = row.children[1].querySelector("span").textContent;
+      const currentDate = row.children[2].textContent.trim();
+      const currentType = row.children[3].textContent.trim();
+
+      const newTitle = prompt("Title:", currentTitle);
+      if (newTitle === null) return;
+
+      const newDesc = prompt("Description:", currentDesc);
+      if (newDesc === null) return;
+
+      const newDate = prompt("Date:", currentDate);
+      if (newDate === null) return;
+
+      const newType = prompt("Type:", currentType);
+      if (newType === null) return;
+
+      try {
+        const resp = await fetch(`/api/documents/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            secret: adminSecret,
+            title: newTitle,
+            description: newDesc,
+            date: newDate,
+            type: newType
+          })
+        });
+
+        const data = await resp.json();
+        if (resp.ok) loadDocuments();
+        else alert("Update error: " + data.error);
+
+      } catch {
+        alert("Network error.");
+      }
+    }
+  });
+
+});
+</script>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">ATLAS SWARM – Admin</div>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="documents.html">Documents</a>
+  </nav>
+  <button id="theme-toggle" class="theme-toggle" type="button">☀ Light theme</button>
+</header>
+
+<!-- ADMIN PASSWORD BOX -->
+<div class="pass-box">
+  <div style="font-size:0.95rem;">Enter admin password:</div>
+  <input type="password" id="admin-password" placeholder="Password">
+  <button id="admin-pass-btn">Set</button>
+  <div id="admin-pass-msg" style="margin-top:8px;font-size:0.85rem;">Password is required for all actions.</div>
+</div>
+
+<div class="admin-wrapper">
+  <h1>Upload New Document</h1>
+
+  <form id="upload-form">
+    <label>Title
+      <input type="text" name="title" required>
+    </label>
+
+    <label>Description
+      <textarea name="description" rows="3"></textarea>
+    </label>
+
+    <label>Date
+      <input type="date" name="date">
+    </label>
+
+    <label>Type
+      <input type="text" name="type" value="PDF">
+    </label>
+
+    <label>PDF File
+      <input type="file" name="file" accept="application/pdf" required>
+    </label>
+
+    <button type="submit" class="admin-submit">Upload</button>
+    <div class="msg" id="msg"></div>
+  </form>
+</div>
+
+<div class="admin-docs">
+  <h2 style="border-bottom:none; margin-top:0;">Existing Documents</h2>
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th style="width:5%;">ID</th>
+        <th style="width:45%;">Document</th>
+        <th style="width:20%;">Date</th>
+        <th style="width:10%;">Type</th>
+        <th style="width:20%;">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="admin-docs-body"></tbody>
+  </table>
+</div>
+
+<footer>
+  border.swarm.project@gmail.com | TED University | Ankara, Türkiye
+</footer>
+
+</body>
+</html>

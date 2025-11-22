@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "title": "Project Proposal",
+    "description": "Initial project scope, aims, and methodology.",
+    "date": "2024-10-15",
+    "type": "PDF",
+    "file": "proposal.pdf"
+  },
+  {
+    "id": 2,
+    "title": "Project Specification",
+    "description": "Detailed technical requirements and system architecture.",
+    "date": "2024-11-02",
+    "type": "PDF",
+    "file": "specification.pdf"
+  }
+]

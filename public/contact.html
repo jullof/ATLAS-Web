@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact & Team | ATLAS</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const body = document.body;
+        const toggleBtn = document.getElementById('theme-toggle');
+        if (!toggleBtn) return;
+
+        function applyTheme(theme) {
+          if (theme === 'light') {
+            body.classList.add('light-theme');
+          } else {
+            body.classList.remove('light-theme');
+          }
+
+          const isLight = body.classList.contains('light-theme');
+          toggleBtn.textContent = isLight ? '☾ Dark theme' : '☀ Light theme';
+        }
+
+        const storedTheme = localStorage.getItem('atlas-theme');
+        const initialTheme = storedTheme || 'dark';
+        applyTheme(initialTheme);
+
+        toggleBtn.addEventListener('click', function () {
+          const isLight = body.classList.contains('light-theme');
+          const newTheme = isLight ? 'dark' : 'light';
+          applyTheme(newTheme);
+          localStorage.setItem('atlas-theme', newTheme);
+        });
+      });
+    </script>
+</head>
+<body>
+
+<header>
+    <div class="logo">ATLAS SWARM</div>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="documents.html">Documents</a>
+        <a href="contact.html" style="color: #3399ff;">Contact</a>
+    </nav>
+    <button id="theme-toggle" class="theme-toggle" type="button">☀ Light theme</button>
+</header>
+
+<div class="container">
+    <div style="text-align: center; margin-bottom: 40px;">
+        <h1>Meet the Team</h1>
+        <p>Contact our project members directly via email for technical inquiries.</p>
+    </div>
+
+    <div class="team-grid">
+        
+        <div class="team-card">
+            <div class="avatar">CG</div>
+            <h3>Can Gündoğdu</h3>
+            <p>Project Member</p>
+            <a href="mailto:can.gundogdu@tedu.edu.tr" class="btn-mail">
+                <i class="fas fa-envelope"></i> Send Mail
+            </a>
+        </div>
+
+        <div class="team-card">
+            <div class="avatar">ZS</div>
+            <h3>Zeynep Selçuk</h3>
+            <p>Project Member</p>
+            <a href="mailto:zeynep.selcuk@tedu.edu.tr" class="btn-mail">
+                <i class="fas fa-envelope"></i> Send Mail
+            </a>
+        </div>
+
+        <div class="team-card">
+            <div class="avatar">SE</div>
+            <h3>Selen Erdem</h3>
+            <p>Project Member</p>
+            <a href="mailto:selen.erdem@tedu.edu.tr" class="btn-mail">
+                <i class="fas fa-envelope"></i> Send Mail
+            </a>
+        </div>
+
+        <div class="team-card">
+            <div class="avatar">EH</div>
+            <h3>Ege Hiçdönmez</h3>
+            <p>Project Member</p>
+            <a href="mailto:ege.hicdonmez@tedu.edu.tr" class="btn-mail">
+                <i class="fas fa-envelope"></i> Send Mail
+            </a>
+        </div>
+
+    </div>
+
+    <div style="margin-top: 60px; text-align: center; border-top: 1px solid #333; padding-top: 30px;">
+        <h3>General Inquiries</h3>
+        <p style="color: #aaa;">For general project information and official documentation requests:</p>
+        <a href="mailto:border.swarm.project@gmail.com" style="color: #3399ff; text-decoration: none; font-size: 1.1rem;">
+            border.swarm.project@gmail.com
+        </a>
+    </div>
+
+</div>
+
+<footer>
+    border.swarm.project@gmail.com | TED University | Ankara, Türkiye
+</footer>
+
+</body>
+</html>

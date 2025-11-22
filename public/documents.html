@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Documents | ATLAS</title>
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Tema toggle script -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const body = document.body;
+        const toggleBtn = document.getElementById('theme-toggle');
+
+        function applyTheme(theme) {
+          if (theme === 'light') {
+            body.classList.add('light-theme');
+          } else {
+            body.classList.remove('light-theme');
+          }
+          if (toggleBtn) {
+            const isLight = body.classList.contains('light-theme');
+            toggleBtn.textContent = isLight ? '☾ Dark theme' : '☀ Light theme';
+          }
+        }
+
+        const storedTheme = localStorage.getItem('atlas-theme');
+        applyTheme(storedTheme || 'dark');
+
+        if (toggleBtn) {
+          toggleBtn.addEventListener('click', () => {
+            const isLight = body.classList.contains('light-theme');
+            const newTheme = isLight ? 'dark' : 'light';
+            applyTheme(newTheme);
+            localStorage.setItem('atlas-theme', newTheme);
+          });
+        }
+      });
+    </script>
+</head>
+<body>
+
+<header>
+    <div class="logo">ATLAS SWARM</div>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="documents.html" class="active">Documents</a>
+        <a href="contact.html">Contact</a>
+    </nav>
+    <button id="theme-toggle" class="theme-toggle" type="button">☀ Light theme</button>
+</header>
+
+<div class="container">
+    <h1>Project Documents</h1>
+    <p>
+        This section includes all official documents and reports related to the
+        <strong>ATLAS (Autonomous Threat Localization and Avoidance System)</strong> project.
+        Use the table below to access our proposals, progress reports, and technical specifications.
+    </p>
+
+    <table class="doc-table">
+        <thead>
+            <tr>
+                <th style="width: 50%;">Document Name</th>
+                <th style="width: 20%;">Date</th>
+                <th style="width: 15%;">Type</th>
+                <th style="width: 15%;">Action</th>
+            </tr>
+        </thead>
+        <tbody id="docs-body">
+            <!-- JS ile doldurulacak -->
+        </tbody>
+    </table>
+</div>
+
+<footer>
+    border.swarm.project@gmail.com | TED University | Ankara, Türkiye
+</footer>
+
+<!-- Dokümanları API'den çeken script -->
+<script>
+  document.addEventListener('DOMContentLoaded', async function () {
+    const tbody = document.getElementById('docs-body');
+
+    try {
+      const resp = await fetch('/api/documents');
+      if (!resp.ok) {
+        throw new Error('HTTP ' + resp.status);
+      }
+      const docs = await resp.json();
+
+      if (!Array.isArray(docs) || docs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4">No documents uploaded yet.</td></tr>';
+        return;
+      }
+
+      docs.forEach(doc => {
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `
+          <td>
+            <strong>${doc.title}</strong><br>
+            <span style="font-size:0.85rem; color:#aaa;">${doc.description || ''}</span>
+          </td>
+          <td>${doc.date || ''}</td>
+          <td>${doc.type || 'PDF'}</td>
+          <td>
+            <a href="/uploads/${doc.file}"
+               class="btn-download"
+               target="_blank"
+               rel="noopener">
+               Download
+            </a>
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+    } catch (err) {
+      console.error(err);
+      tbody.innerHTML = '<tr><td colspan="4">Error loading documents.</td></tr>';
+    }
+  });
+</script>
+
+</body>
+</html>
