@@ -79,10 +79,11 @@
     <table class="doc-table">
         <thead>
             <tr>
-                <th style="width: 50%;">Document Name</th>
-                <th style="width: 20%;">Date</th>
-                <th style="width: 15%;">Type</th>
-                <th style="width: 15%;">Action</th>
+<th data-sort="title" style="width: 50%; cursor:pointer;">Document Name</th>
+<th data-sort="date" style="width: 20%; cursor:pointer;">Date</th>
+<th data-sort="type" style="width: 15%; cursor:pointer;">Type</th>
+<th style="width: 15%;">Action</th>
+
             </tr>
         </thead>
         <tbody id="docs-body">
@@ -95,27 +96,27 @@
     border.swarm.project@gmail.com | TED University | Ankara, Türkiye
 </footer>
 
-<!-- Dokümanları API'den çeken script -->
+<!-- Dokümanları API'den çeken script + sıralama -->
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
     const tbody = document.getElementById('docs-body');
+    const headers = document.querySelectorAll('th[data-sort]');
 
-    try {
-      const resp = await fetch('/api/documents');
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    // API'den gelen dokümanlar burada tutulacak
+    let docs = [];
+    // Hangi kolon hangi yönde sıralı tutuluyor
+    const sortState = {};
 
-      const docs = await resp.json();
+    function renderTable() {
       if (!Array.isArray(docs) || docs.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4">No documents uploaded yet.</td></tr>';
         return;
       }
 
+      tbody.innerHTML = '';
       docs.forEach(doc => {
         const tr = document.createElement('tr');
-
-        // SUPABASE
         const fileUrl = doc.url;
-
 
         tr.innerHTML = `
           <td>
@@ -133,16 +134,60 @@
             </a>
           </td>
         `;
-
         tbody.appendChild(tr);
       });
+    }
 
+    // ---- Veriyi çek ----
+    try {
+      const resp = await fetch('/api/documents');
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+
+      const data = await resp.json();
+      docs = Array.isArray(data) ? data : [];
+      renderTable();
     } catch (err) {
       console.error(err);
       tbody.innerHTML = '<tr><td colspan="4">Error loading documents.</td></tr>';
+      return;
     }
+
+    // ---- Sıralama olayları ----
+    headers.forEach(header => {
+      header.addEventListener('click', () => {
+        const key = header.dataset.sort;
+        if (!key || !docs.length) return;
+
+        
+        const current = sortState[key] || 'asc';
+        const nextDir = current === 'asc' ? 'desc' : 'asc';
+        sortState[key] = nextDir;
+
+        docs.sort((a, b) => {
+          let valA = a[key] || '';
+          let valB = b[key] || '';
+
+        
+          if (key === 'date') {
+            const dA = valA ? new Date(valA) : new Date(0);
+            const dB = valB ? new Date(valB) : new Date(0);
+            return nextDir === 'asc' ? dA - dB : dB - dA;
+          }
+
+      
+          valA = String(valA);
+          valB = String(valB);
+          return nextDir === 'asc'
+            ? valA.localeCompare(valB)
+            : valB.localeCompare(valA);
+        });
+
+        renderTable();
+      });
+    });
   });
 </script>
+
 
 </body>
 </html>
