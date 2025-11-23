@@ -238,6 +238,59 @@ footer {
     border-top: 1px solid #333;
     margin-top: 40px;
 }
+/* Hamburger buton */
+.menu-toggle {
+    display: none;
+    background: transparent;
+    border: 1px solid #444;
+    border-radius: 6px;
+    color: #fff;
+    padding: 6px 10px;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+body.light-theme .menu-toggle {
+    color: #111;
+    border-color: #ccc;
+}
+
+/* Mobil görünüm */
+@media (max-width: 768px) {
+
+    header {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .main-nav {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .main-nav a {
+        padding: 8px 0;
+    }
+
+    /* nav açıkken göster */
+    body.nav-open .main-nav {
+        display: flex;
+    }
+
+    .header-actions {
+        margin-left: auto;
+    }
+
+    .menu-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 10px;
+    }
+}
+
 
 /* ======================================================================
    LIGHT THEME
@@ -303,4 +356,90 @@ body.light-theme .doc-table th {
 body.light-theme footer {
     color: #555;
     border-top: 1px solid #ddd;
+}
+/* =======================
+   SEND MAIL BUTTON STYLE
+   ======================= */
+
+.btn-mail {
+    color: #4da3ff;          
+    font-weight: 500;
+    text-decoration: none;
+    transition: 0.2s ease;
+}
+
+.btn-mail i {
+    margin-right: 6px;
+    color: #4da3ff;
+}
+
+.btn-mail:hover {
+    color: #82c4ff;
+    text-decoration: underline;
+}
+
+/* Light theme için */
+body.light-theme .btn-mail {
+    color: #0056d6;
+}
+
+body.light-theme .btn-mail:hover {
+    color: #1a7fff;
+}
+/* ======================
+   ADMIN BUTTON
+   ====================== */
+
+.btn-admin {
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid #1e90ff;
+    background: transparent;
+    color: #1e90ff;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+body.admin-page .btn-admin {
+    background: #1e90ff;
+    color: #0b0b0b;
+    border-color: #1e90ff;
+}
+
+/* Light theme + admin */
+body.light-theme.admin-page .btn-admin,
+body.admin-page.light-theme .btn-admin {
+    background: #0056d6;
+    color: #ffffff;
+    border-color: #0056d6;
+}
+
+
+.btn-admin:hover {
+    background: #1e90ff;
+    color: #0b0b0b;
+    transform: translateY(-1px);
+}
+
+/* Light mode */
+body.light-theme .btn-admin {
+    border-color: #0056d6;
+    color: #0056d6;
+}
+
+body.light-theme .btn-admin:hover {
+    background: #0056d6;
+    color: white;
+}
+/* =======================
+   Header action container
+   ======================= */
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }

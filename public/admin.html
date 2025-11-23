@@ -158,14 +158,14 @@ document.addEventListener("DOMContentLoaded", function () {
   const body = document.body;
   const toggleBtn = document.getElementById("theme-toggle");
 
-  // Theme
+  // --- THEME ---
   function applyTheme(theme) {
     if (theme === "light") body.classList.add("light-theme");
     else body.classList.remove("light-theme");
+
     if (toggleBtn) {
-      toggleBtn.textContent = body.classList.contains("light-theme")
-        ? "☾ Dark theme"
-        : "☀ Light theme";
+      const isLight = body.classList.contains("light-theme");
+      toggleBtn.textContent = isLight ? "☾ Dark theme" : "☀ Light theme";
     }
   }
 
@@ -178,6 +178,14 @@ document.addEventListener("DOMContentLoaded", function () {
       const newTheme = isLight ? "dark" : "light";
       applyTheme(newTheme);
       localStorage.setItem("atlas-theme", newTheme);
+    });
+  }
+
+  // --- HAMBURGER MENU ---
+  const menuToggle = document.querySelector(".menu-toggle");
+  if (menuToggle) {
+    menuToggle.addEventListener("click", () => {
+      body.classList.toggle("nav-open");
     });
   }
 
@@ -354,18 +362,30 @@ document.addEventListener("DOMContentLoaded", function () {
 
 });
 </script>
+
 </head>
 
-<body>
+<body class="admin-page">
+
 
 <header>
-  <div class="logo">ATLAS SWARM – Admin</div>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="documents.html">Documents</a>
-  </nav>
-  <button id="theme-toggle" class="theme-toggle" type="button">☀ Light theme</button>
+    <div class="logo">ATLAS SWARM - ADMIN</div>
+
+    <nav class="main-nav">
+        <a href="index.html">Home</a>
+        <a href="documents.html">Documents</a>
+        <a href="contact.html">Contact</a>
+    </nav>
+
+    <div class="header-actions">
+        <button id="theme-toggle" class="theme-toggle" type="button">☀ Light theme</button>
+        <a href="admin.html" class="btn-admin">Admin</a>
+    </div>
+
+    <button class="menu-toggle" type="button" aria-label="Toggle navigation">☰</button>
 </header>
+
+
 
 <!-- ADMIN PASSWORD BOX -->
 <div class="pass-box">

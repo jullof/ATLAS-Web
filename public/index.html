@@ -7,46 +7,66 @@
     <link rel="stylesheet" href="css/style.css">
 
     <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        const body = document.body;
-        const toggleBtn = document.getElementById('theme-toggle');
-        if (!toggleBtn) return;
+  document.addEventListener('DOMContentLoaded', function () {
+    const body = document.body;
+    const toggleBtn = document.getElementById('theme-toggle');
+    if (!toggleBtn) return;
 
-        function applyTheme(theme) {
-          if (theme === 'light') {
-            body.classList.add('light-theme');
-          } else {
-            body.classList.remove('light-theme');
-          }
+    function applyTheme(theme) {
+      if (theme === 'light') {
+        body.classList.add('light-theme');
+      } else {
+        body.classList.remove('light-theme');
+      }
 
-          const isLight = body.classList.contains('light-theme');
-          toggleBtn.textContent = isLight ? '☾ Dark theme' : '☀ Light theme';
-        }
+      const isLight = body.classList.contains('light-theme');
+      toggleBtn.textContent = isLight ? '☾ Dark theme' : '☀ Light theme';
+    }
 
-        const storedTheme = localStorage.getItem('atlas-theme');
-        const initialTheme = storedTheme || 'dark'; // Varsayılan: dark
-        applyTheme(initialTheme);
+    const storedTheme = localStorage.getItem('atlas-theme');
+    const initialTheme = storedTheme || 'dark'; 
+    applyTheme(initialTheme);
 
-        toggleBtn.addEventListener('click', function () {
-          const isLight = body.classList.contains('light-theme');
-          const newTheme = isLight ? 'dark' : 'light';
-          applyTheme(newTheme);
-          localStorage.setItem('atlas-theme', newTheme);
-        });
+    toggleBtn.addEventListener('click', function () {
+      const isLight = body.classList.contains('light-theme');
+      const newTheme = isLight ? 'dark' : 'light';
+      applyTheme(newTheme);
+      localStorage.setItem('atlas-theme', newTheme);
+    });
+
+    // --- HAMBURGER MENU ---
+    const menuToggle = document.querySelector('.menu-toggle');
+    if (menuToggle) {
+      menuToggle.addEventListener('click', function () {
+        body.classList.toggle('nav-open');
       });
-    </script>
+    }
+  });
+</script>
+
 </head>
 <body>
 
 <header>
     <div class="logo">ATLAS SWARM</div>
-    <nav>
+
+    <nav class="main-nav">
         <a href="index.html" style="color: #3399ff;">Home</a>
         <a href="documents.html">Documents</a>
         <a href="contact.html">Contact</a>
     </nav>
-    <button id="theme-toggle" class="theme-toggle" type="button">☀ Light theme</button>
+
+    <div class="header-actions">
+        <button id="theme-toggle" class="theme-toggle" type="button">☀ Light theme</button>
+        <a href="admin.html" class="btn-admin">Admin</a>
+    </div>
+
+    <button class="menu-toggle" type="button" aria-label="Toggle navigation">
+        ☰
+    </button>
 </header>
+
+
 
 <div class="hero">
     <h1>ATLAS</h1>
