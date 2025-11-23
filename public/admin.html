@@ -207,10 +207,35 @@ document.addEventListener("DOMContentLoaded", function () {
     passMsg.style.color = "#43a047";
   });
 
-  // -------- UPLOAD FORM --------
+  // -------- UPLOAD / EDIT FORM --------
   const form = document.getElementById("upload-form");
   const msg = document.getElementById("msg");
   const docsTbody = document.getElementById("admin-docs-body");
+
+  const titleInput  = document.getElementById("doc-title");
+  const descInput   = document.getElementById("doc-description");
+  const dateInput   = document.getElementById("doc-date");
+  const typeInput   = document.getElementById("doc-type");
+  const fileInput   = document.getElementById("doc-file");
+
+  const formTitle   = document.getElementById("admin-form-title");
+  const submitBtn   = document.getElementById("upload-btn");
+  const cancelEditBtn = document.getElementById("cancel-edit");
+
+  let isEditing = false;
+  let editId = null;
+
+  function resetFormToCreateMode() {
+    isEditing = false;
+    editId = null;
+    form.reset();
+    formTitle.textContent = "Upload New Document";
+    submitBtn.textContent = "Upload";
+    cancelEditBtn.style.display = "none";
+    fileInput.required = true;
+  }
+
+  cancelEditBtn.addEventListener("click", resetFormToCreateMode);
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -221,7 +246,50 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    // ----- EDIT MODE -----
+    if (isEditing) {
+      msg.textContent = "Saving changes...";
+      msg.style.color = "#fff";
+
+      try {
+        const resp = await fetch(`/api/documents/${editId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            secret: adminSecret,
+            title: titleInput.value,
+            description: descInput.value,
+            date: dateInput.value,
+            type: typeInput.value
+          })
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          msg.textContent = "❌ Error: " + (data.error || "Update failed");
+          msg.style.color = "#e53935";
+          return;
+        }
+
+        msg.textContent = "✔ Updated.";
+        msg.style.color = "#43a047";
+
+        resetFormToCreateMode();
+        loadDocuments();
+      } catch (err) {
+        console.error(err);
+        msg.textContent = "❌ Network error.";
+        msg.style.color = "#e53935";
+      }
+
+      return;
+    }
+
+    // ----- CREATE / UPLOAD MODE -----
     msg.textContent = "Uploading...";
+    msg.style.color = "#fff";
+
     const fd = new FormData(form);
     fd.append("secret", adminSecret);
 
@@ -248,6 +316,7 @@ document.addEventListener("DOMContentLoaded", function () {
       msg.style.color = "#e53935";
     }
   });
+
 
   // -------- LOAD DOCUMENTS TABLE -------
   async function loadDocuments() {
@@ -321,43 +390,30 @@ document.addEventListener("DOMContentLoaded", function () {
       const row = target.closest("tr");
 
       const currentTitle = row.children[1].querySelector("strong").textContent;
-      const currentDesc = row.children[1].querySelector("span").textContent;
-      const currentDate = row.children[2].textContent.trim();
-      const currentType = row.children[3].textContent.trim();
+      const currentDesc  = row.children[1].querySelector("span").textContent;
+      const currentDate  = row.children[2].textContent.trim();
+      const currentType  = row.children[3].textContent.trim();
 
-      const newTitle = prompt("Title:", currentTitle);
-      if (newTitle === null) return;
+      isEditing = true;
+      editId = id;
 
-      const newDesc = prompt("Description:", currentDesc);
-      if (newDesc === null) return;
+      formTitle.textContent = "Edit Document";
+      submitBtn.textContent = "Save Changes";
+      cancelEditBtn.style.display = "inline-block";
+      fileInput.required = false; 
 
-      const newDate = prompt("Date:", currentDate);
-      if (newDate === null) return;
+      titleInput.value = currentTitle;
+      descInput.value = currentDesc;
+      dateInput.value = currentDate;
+      typeInput.value = currentType;
 
-      const newType = prompt("Type:", currentType);
-      if (newType === null) return;
-
-      try {
-        const resp = await fetch(`/api/documents/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            secret: adminSecret,
-            title: newTitle,
-            description: newDesc,
-            date: newDate,
-            type: newType
-          })
-        });
-
-        const data = await resp.json();
-        if (resp.ok) loadDocuments();
-        else alert("Update error: " + data.error);
-
-      } catch {
-        alert("Network error.");
-      }
+  
+      window.scrollTo({
+        top: form.offsetTop - 20,
+        behavior: "smooth"
+      });
     }
+
   });
 
 });
@@ -396,33 +452,43 @@ document.addEventListener("DOMContentLoaded", function () {
 </div>
 
 <div class="admin-wrapper">
-  <h1>Upload New Document</h1>
+  <h1 id="admin-form-title">Upload New Document</h1>
 
   <form id="upload-form">
     <label>Title
-      <input type="text" name="title" required>
+      <input id="doc-title" type="text" name="title" required>
     </label>
 
     <label>Description
-      <textarea name="description" rows="3"></textarea>
+      <textarea id="doc-description" name="description" rows="3"></textarea>
     </label>
 
     <label>Date
-      <input type="date" name="date">
+      <input id="doc-date" type="date" name="date">
     </label>
 
     <label>Type
-      <input type="text" name="type" value="PDF">
+      <input id="doc-type" type="text" name="type" value="PDF">
     </label>
 
     <label>PDF File
-      <input type="file" name="file" accept="application/pdf" required>
+      <input id="doc-file" type="file" name="file" accept="application/pdf" required>
     </label>
 
-    <button type="submit" class="admin-submit">Upload</button>
+    <div style="margin-top:18px; display:flex; gap:10px;">
+      <button type="submit" class="admin-submit" id="upload-btn">Upload</button>
+      <button type="button"
+              id="cancel-edit"
+              class="admin-submit"
+              style="background-color:#555; display:none;">
+        Cancel
+      </button>
+    </div>
+
     <div class="msg" id="msg"></div>
   </form>
 </div>
+
 
 <div class="admin-docs">
   <h2 style="border-bottom:none; margin-top:0;">Existing Documents</h2>
