@@ -29,33 +29,30 @@ app.use(express.json());
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// --- DOCUMENTS.JSON ---
-const docsPath = path.join(__dirname, 'documents.json');
 
-function readDocuments() {
-  if (!fs.existsSync(docsPath)) {
-    fs.writeFileSync(docsPath, '[]', 'utf8');
-  }
-  const raw = fs.readFileSync(docsPath, 'utf8') || '[]';
-  return JSON.parse(raw);
-}
 
-function writeDocuments(docs) {
-  fs.writeFileSync(docsPath, JSON.stringify(docs, null, 2), 'utf8');
-}
-
-// --- GET ALL DOCUMENTS ---
-app.get('/api/documents', (req, res) => {
+// --- GET ALL DOCUMENTS (Supabase) ---
+app.get('/api/documents', async (req, res) => {
   try {
-    const docs = readDocuments();
-    res.json(docs);
+    const { data, error } = await supabase
+      .from('documents')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error) {
+      console.error('GET /api/documents Supabase error:', error);
+      return res.status(500).json({ error: 'Cannot read documents' });
+    }
+
+    res.json(data || []);
   } catch (err) {
     console.error('GET /api/documents error:', err);
-    res.status(500).json({ error: 'Cannot read documents.json' });
+    res.status(500).json({ error: 'Cannot read documents' });
   }
 });
 
-// --- UPLOAD DOCUMENT (Supabase) ---
+
+// --- UPLOAD DOCUMENT (Supabase + DB) ---
 app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
     const { title, description, date, type, secret } = req.body;
@@ -72,7 +69,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
     // --- Supabase upload (bucket: atlas-documents) ---
     const { error: uploadError } = await supabase.storage
-      .from('atlas-documents')
+      .from('atlas-documents')     
       .upload(fileName, req.file.buffer, {
         contentType: req.file.mimetype || 'application/pdf',
         upsert: false
@@ -88,31 +85,38 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       .from('atlas-documents')
       .getPublicUrl(fileName);
 
-    const docs = readDocuments();
-    const newId = (docs[docs.length - 1]?.id || 0) + 1;
+    const publicUrl = urlData?.publicUrl || '';
 
-    const newDoc = {
-      id: newId,
-      title: title || req.file.originalname,
-      description: description || '',
-      date: date || new Date().toISOString().slice(0, 10),
-      type: type || 'PDF',
-      file: fileName,
-      url: urlData.publicUrl || ''
-    };
+    // --- METADATA'YI documents TABLOSUNA YAZ ---
+    const { data: inserted, error: insertError } = await supabase
+      .from('documents')
+      .insert({
+        title: title || req.file.originalname,
+        description: description || '',
+        date: date || new Date().toISOString().slice(0, 10),
+        type: type || 'PDF',
+        file: fileName,
+        url: publicUrl
+      })
+      .select()
+      .single();
 
-    docs.push(newDoc);
-    writeDocuments(docs);
+    if (insertError) {
+      console.error('Insert documents error:', insertError);
+      return res.status(500).json({ error: 'Failed to save document metadata' });
+    }
 
-    res.json({ success: true, document: newDoc });
+    res.json({ success: true, document: inserted });
   } catch (err) {
     console.error('POST /api/upload error:', err);
     res.status(500).json({ error: 'Upload failed' });
   }
 });
 
-// --- UPDATE DOCUMENT ---
-app.put('/api/documents/:id', (req, res) => {
+
+
+// --- UPDATE DOCUMENT (Supabase DB) ---
+app.put('/api/documents/:id', async (req, res) => {
   try {
     const { secret, title, description, date, type } = req.body;
 
@@ -121,27 +125,34 @@ app.put('/api/documents/:id', (req, res) => {
     }
 
     const docId = Number(req.params.id);
-    const docs = readDocuments();
-    const index = docs.findIndex(d => d.id === docId);
 
-    if (index === -1) {
-      return res.status(404).json({ error: 'Document not found' });
+    const { data, error } = await supabase
+      .from('documents')
+      .update({
+        title,
+        description,
+        date,
+        type
+      })
+      .eq('id', docId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Update document error:', error);
+      return res.status(500).json({ error: 'Failed to update document' });
     }
 
-    if (title !== undefined) docs[index].title = title;
-    if (description !== undefined) docs[index].description = description;
-    if (date !== undefined) docs[index].date = date;
-    if (type !== undefined) docs[index].type = type;
-
-    writeDocuments(docs);
-    res.json({ success: true, document: docs[index] });
+    res.json({ success: true, document: data });
   } catch (err) {
     console.error('PUT /api/documents/:id error:', err);
     res.status(500).json({ error: 'Update failed' });
   }
 });
 
-// --- DELETE DOCUMENT (Supabase) ---
+
+
+// --- DELETE DOCUMENT (Supabase DB + Storage) ---
 app.post('/api/documents/delete', async (req, res) => {
   try {
     const { id, secret } = req.body;
@@ -151,25 +162,39 @@ app.post('/api/documents/delete', async (req, res) => {
     }
 
     const docId = Number(id);
-    const docs = readDocuments();
-    const index = docs.findIndex(d => d.id === docId);
 
-    if (index === -1) {
+    // Önce veritabanındaki kaydı bul
+    const { data: doc, error: fetchError } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('id', docId)
+      .single();
+
+    if (fetchError || !doc) {
+      console.error('Fetch document before delete error:', fetchError);
       return res.status(404).json({ error: 'Document not found' });
     }
 
-    const [removed] = docs.splice(index, 1);
-    writeDocuments(docs);
-
-    // --- Supabase delete ---
-    if (removed && removed.file) {
+    // Storage'tan dosyayı sil
+    if (doc.file) {
       const { error: delError } = await supabase.storage
         .from('atlas-documents')
-        .remove([removed.file]);
+        .remove([doc.file]);
 
       if (delError) {
         console.warn('Warning: could not delete file from Supabase', delError);
       }
+    }
+
+    // Tablo kaydını sil
+    const { error: deleteRowError } = await supabase
+      .from('documents')
+      .delete()
+      .eq('id', docId);
+
+    if (deleteRowError) {
+      console.error('Delete row error:', deleteRowError);
+      return res.status(500).json({ error: 'Failed to delete metadata' });
     }
 
     res.json({ success: true });
@@ -178,6 +203,7 @@ app.post('/api/documents/delete', async (req, res) => {
     res.status(500).json({ error: 'Delete failed' });
   }
 });
+
 
 app.listen(PORT, () => {
   console.log(`ATLAS server running at http://localhost:${PORT}`);
