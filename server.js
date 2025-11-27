@@ -26,6 +26,37 @@ app.use(express.json());
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+/**
+ * Admin işlemlerini event_logs tablosuna yazan helper
+ * action örnekleri:
+ *  - ADMIN_UPLOAD_OK / ADMIN_UPLOAD_DENIED
+ *  - ADMIN_UPDATE_OK / ADMIN_UPDATE_DENIED
+ *  - ADMIN_DELETE_OK / ADMIN_DELETE_DENIED
+ */
+async function logAdminEvent(req, { action, fileName = null, extra = null }) {
+  try {
+    const ip = getClientIp(req);
+    const path = req.originalUrl || '/admin';
+
+    const { error } = await supabase
+      .from('event_logs')
+      .insert({
+        ip_address: ip || null,
+        path,
+        action,
+        file_name: fileName,
+        extra
+      });
+
+    if (error) {
+      console.error('logAdminEvent error:', error);
+    }
+  } catch (err) {
+    console.error('logAdminEvent unexpected error:', err);
+  }
+}
+
+
 // --- IP HELPER ---
 function getClientIp(req) {
   const fwd = req.headers['x-forwarded-for'];
@@ -35,6 +66,8 @@ function getClientIp(req) {
   return req.socket.remoteAddress || null;
 }
 
+
+// --- GET ALL DOCUMENTS ---
 app.get('/api/documents', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -60,9 +93,18 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
     const { title, description, date, type, secret } = req.body;
 
+    // Yanlış şifre denemesini logla
     if (secret !== ADMIN_SECRET) {
+      await logAdminEvent(req, {
+        action: 'ADMIN_UPLOAD_DENIED',
+        extra: {
+          reason: 'wrong secret',
+          originalName: req.file?.originalname || null
+        }
+      });
       return res.status(401).json({ error: 'Unauthorized' });
     }
+
     if (!req.file) {
       return res.status(400).json({ error: 'File is required' });
     }
@@ -109,25 +151,15 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       return res.status(500).json({ error: 'Failed to save document metadata' });
     }
 
-    // --- UPLOAD LOG (event_logs tablosu) ---
-    try {
-      const ip = getClientIp(req);
-      const { error: logError } = await supabase
-        .from('event_logs')
-        .insert({
-          ip_address: ip,
-          path: '/admin.html',
-          action: 'UPLOAD',
-          file_name: fileName,
-          extra: { title: inserted.title }
-        });
-
-      if (logError) {
-        console.warn('Upload log insert error:', logError);
+    // --- BAŞARILI UPLOAD LOGU ---
+    await logAdminEvent(req, {
+      action: 'ADMIN_UPLOAD_OK',
+      fileName,
+      extra: {
+        id: inserted.id,
+        title: inserted.title
       }
-    } catch (e) {
-      console.warn('Upload log failed:', e.message);
-    }
+    });
 
     res.json({ success: true, document: inserted });
   } catch (err) {
@@ -141,21 +173,20 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 app.put('/api/documents/:id', async (req, res) => {
   try {
     const { secret, title, description, date, type } = req.body;
+    const docId = Number(req.params.id);
 
+    // Yanlış şifre DENEMESİNİ logla
     if (secret !== ADMIN_SECRET) {
+      await logAdminEvent(req, {
+        action: 'ADMIN_UPDATE_DENIED',
+        extra: { docId, reason: 'wrong secret' }
+      });
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const docId = Number(req.params.id);
-
     const { data, error } = await supabase
       .from('documents')
-      .update({
-        title,
-        description,
-        date,
-        type
-      })
+      .update({ title, description, date, type })
       .eq('id', docId)
       .select()
       .single();
@@ -165,6 +196,13 @@ app.put('/api/documents/:id', async (req, res) => {
       return res.status(500).json({ error: 'Failed to update document' });
     }
 
+    // Başarılı UPDATE’i de logla
+    await logAdminEvent(req, {
+      action: 'ADMIN_UPDATE_OK',
+      fileName: data.file || null,
+      extra: { docId, title: data.title }
+    });
+
     res.json({ success: true, document: data });
   } catch (err) {
     console.error('PUT /api/documents/:id error:', err);
@@ -173,16 +211,22 @@ app.put('/api/documents/:id', async (req, res) => {
 });
 
 
+// --- DELETE DOCUMENT (Supabase DB + Storage) ---
 app.post('/api/documents/delete', async (req, res) => {
   try {
     const { id, secret } = req.body;
+    const docId = Number(id);
 
+    // Yanlış şifre denemesini logla
     if (secret !== ADMIN_SECRET) {
+      await logAdminEvent(req, {
+        action: 'ADMIN_DELETE_DENIED',
+        extra: { docId, reason: 'wrong secret' }
+      });
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const docId = Number(id);
-
+    // Önce veritabanındaki kaydı bul
     const { data: doc, error: fetchError } = await supabase
       .from('documents')
       .select('*')
@@ -194,6 +238,7 @@ app.post('/api/documents/delete', async (req, res) => {
       return res.status(404).json({ error: 'Document not found' });
     }
 
+    // Storage'tan dosyayı sil
     if (doc.file) {
       const { error: delError } = await supabase.storage
         .from('atlas-documents')
@@ -204,6 +249,7 @@ app.post('/api/documents/delete', async (req, res) => {
       }
     }
 
+    // Tablo kaydını sil
     const { error: deleteRowError } = await supabase
       .from('documents')
       .delete()
@@ -214,6 +260,13 @@ app.post('/api/documents/delete', async (req, res) => {
       return res.status(500).json({ error: 'Failed to delete metadata' });
     }
 
+    // Başarılı DELETE logu
+    await logAdminEvent(req, {
+      action: 'ADMIN_DELETE_OK',
+      fileName: doc.file || null,
+      extra: { docId, title: doc.title }
+    });
+
     res.json({ success: true });
   } catch (err) {
     console.error('POST /api/documents/delete error:', err);
@@ -222,6 +275,7 @@ app.post('/api/documents/delete', async (req, res) => {
 });
 
 
+// --- GENERIC LOG ENDPOINT (frontend logger.js kullanıyor) ---
 app.post('/api/log', async (req, res) => {
   const ip = getClientIp(req);
   const userAgent = req.headers['user-agent'] || null;
