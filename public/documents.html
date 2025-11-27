@@ -99,6 +99,7 @@
 <!-- Dokümanları API'den çeken script + sıralama -->
 <script>
   document.addEventListener('DOMContentLoaded', async function () {
+    const API_BASE = 'https://atlas-web-zwst.onrender.com';
     const tbody = document.getElementById('docs-body');
     const headers = document.querySelectorAll('th[data-sort]');
 
@@ -140,7 +141,7 @@
 
     // ---- Veriyi çek ----
     try {
-      const resp = await fetch('/api/documents');
+      const resp = await fetch(`${API_BASE}/api/documents`);
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
 
       const data = await resp.json();
@@ -188,6 +189,7 @@
   });
 </script>
 
+<script src="js/logger.js"></script>
 
 </body>
 </html>

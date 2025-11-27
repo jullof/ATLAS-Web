@@ -12,26 +12,29 @@ const fs = require('fs');
 const path = require('path');
 const cors = require('cors');
 
-
 const ADMIN_SECRET = process.env.ADMIN_SECRET || 'dev-secret';
 
 const app = express();
 const PORT = 3000;
 
-// --- STATIC DOSYALAR ---
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use(cors());
 app.use(express.json());
 
-// --- MULTER (MEMORY STORAGE) ---
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
+// --- IP HELPER ---
+function getClientIp(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  if (fwd) {
+    return fwd.split(',')[0].trim();
+  }
+  return req.socket.remoteAddress || null;
+}
 
-
-// --- GET ALL DOCUMENTS (Supabase) ---
 app.get('/api/documents', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -69,7 +72,7 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
     // --- Supabase upload (bucket: atlas-documents) ---
     const { error: uploadError } = await supabase.storage
-      .from('atlas-documents')     
+      .from('atlas-documents')
       .upload(fileName, req.file.buffer, {
         contentType: req.file.mimetype || 'application/pdf',
         upsert: false
@@ -106,13 +109,32 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       return res.status(500).json({ error: 'Failed to save document metadata' });
     }
 
+    // --- UPLOAD LOG (event_logs tablosu) ---
+    try {
+      const ip = getClientIp(req);
+      const { error: logError } = await supabase
+        .from('event_logs')
+        .insert({
+          ip_address: ip,
+          path: '/admin.html',
+          action: 'UPLOAD',
+          file_name: fileName,
+          extra: { title: inserted.title }
+        });
+
+      if (logError) {
+        console.warn('Upload log insert error:', logError);
+      }
+    } catch (e) {
+      console.warn('Upload log failed:', e.message);
+    }
+
     res.json({ success: true, document: inserted });
   } catch (err) {
     console.error('POST /api/upload error:', err);
     res.status(500).json({ error: 'Upload failed' });
   }
 });
-
 
 
 // --- UPDATE DOCUMENT (Supabase DB) ---
@@ -151,8 +173,6 @@ app.put('/api/documents/:id', async (req, res) => {
 });
 
 
-
-// --- DELETE DOCUMENT (Supabase DB + Storage) ---
 app.post('/api/documents/delete', async (req, res) => {
   try {
     const { id, secret } = req.body;
@@ -163,7 +183,6 @@ app.post('/api/documents/delete', async (req, res) => {
 
     const docId = Number(id);
 
-    // Önce veritabanındaki kaydı bul
     const { data: doc, error: fetchError } = await supabase
       .from('documents')
       .select('*')
@@ -175,7 +194,6 @@ app.post('/api/documents/delete', async (req, res) => {
       return res.status(404).json({ error: 'Document not found' });
     }
 
-    // Storage'tan dosyayı sil
     if (doc.file) {
       const { error: delError } = await supabase.storage
         .from('atlas-documents')
@@ -186,7 +204,6 @@ app.post('/api/documents/delete', async (req, res) => {
       }
     }
 
-    // Tablo kaydını sil
     const { error: deleteRowError } = await supabase
       .from('documents')
       .delete()
@@ -201,6 +218,39 @@ app.post('/api/documents/delete', async (req, res) => {
   } catch (err) {
     console.error('POST /api/documents/delete error:', err);
     res.status(500).json({ error: 'Delete failed' });
+  }
+});
+
+
+app.post('/api/log', async (req, res) => {
+  const ip = getClientIp(req);
+  const userAgent = req.headers['user-agent'] || null;
+  const { action, path: reqPath, fileName, extra } = req.body || {};
+
+  if (!action) {
+    return res.status(400).json({ error: 'action is required' });
+  }
+
+  try {
+    const { error } = await supabase
+      .from('event_logs')
+      .insert({
+        ip_address: ip,
+        path: reqPath || null,
+        action,
+        file_name: fileName || null,
+        extra: { userAgent, ...(extra || {}) }
+      });
+
+    if (error) {
+      console.error('Log insert error:', error);
+      return res.status(500).json({ error: 'log insert failed' });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /api/log error:', err);
+    res.status(500).json({ error: 'server error' });
   }
 });
 

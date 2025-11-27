@@ -155,6 +155,7 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+  const API_BASE = 'https://atlas-web-zwst.onrender.com';
   const body = document.body;
   const toggleBtn = document.getElementById("theme-toggle");
 
@@ -252,7 +253,7 @@ document.addEventListener("DOMContentLoaded", function () {
       msg.style.color = "#fff";
 
       try {
-        const resp = await fetch(`/api/documents/${editId}`, {
+        const resp = await fetch(`${API_BASE}/api/documents/${editId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -294,10 +295,11 @@ document.addEventListener("DOMContentLoaded", function () {
     fd.append("secret", adminSecret);
 
     try {
-      const resp = await fetch("/api/upload", {
-        method: "POST",
-        body: fd
-      });
+     const resp = await fetch(`${API_BASE}/api/upload`, {
+      method: "POST",
+      body: fd
+    });
+
       const data = await resp.json();
 
       if (resp.ok) {
@@ -323,7 +325,7 @@ document.addEventListener("DOMContentLoaded", function () {
     docsTbody.innerHTML = "<tr><td colspan='5'>Loading...</td></tr>";
 
     try {
-      const resp = await fetch("/api/documents");
+      const resp = await fetch(`${API_BASE}/api/documents`);
       const docs = await resp.json();
 
       if (!docs.length) {
@@ -370,11 +372,12 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!confirm("Delete this document?")) return;
 
       try {
-        const resp = await fetch("/api/documents/delete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id, secret: adminSecret })
-        });
+      const resp = await fetch(`${API_BASE}/api/documents/delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, secret: adminSecret })
+      });
+
 
         const data = await resp.json();
         if (resp.ok) loadDocuments();
@@ -509,6 +512,7 @@ document.addEventListener("DOMContentLoaded", function () {
 <footer>
   border.swarm.project@gmail.com | TED University | Ankara, Türkiye
 </footer>
+<script src="js/logger.js"></script>
 
 </body>
 </html>
