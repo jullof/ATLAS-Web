@@ -27,8 +27,6 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 /**
- * Admin işlemlerini event_logs tablosuna yazan helper
- * action örnekleri:
  *  - ADMIN_UPLOAD_OK / ADMIN_UPLOAD_DENIED
  *  - ADMIN_UPDATE_OK / ADMIN_UPDATE_DENIED
  *  - ADMIN_DELETE_OK / ADMIN_DELETE_DENIED
@@ -93,7 +91,6 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
   try {
     const { title, description, date, type, secret } = req.body;
 
-    // Yanlış şifre denemesini logla
     if (secret !== ADMIN_SECRET) {
       await logAdminEvent(req, {
         action: 'ADMIN_UPLOAD_DENIED',
@@ -132,7 +129,6 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
 
     const publicUrl = urlData?.publicUrl || '';
 
-    // --- METADATA'YI documents TABLOSUNA YAZ ---
     const { data: inserted, error: insertError } = await supabase
       .from('documents')
       .insert({
@@ -151,7 +147,6 @@ app.post('/api/upload', upload.single('file'), async (req, res) => {
       return res.status(500).json({ error: 'Failed to save document metadata' });
     }
 
-    // --- BAŞARILI UPLOAD LOGU ---
     await logAdminEvent(req, {
       action: 'ADMIN_UPLOAD_OK',
       fileName,
@@ -196,7 +191,6 @@ app.put('/api/documents/:id', async (req, res) => {
       return res.status(500).json({ error: 'Failed to update document' });
     }
 
-    // Başarılı UPDATE’i de logla
     await logAdminEvent(req, {
       action: 'ADMIN_UPDATE_OK',
       fileName: data.file || null,
@@ -217,7 +211,6 @@ app.post('/api/documents/delete', async (req, res) => {
     const { id, secret } = req.body;
     const docId = Number(id);
 
-    // Yanlış şifre denemesini logla
     if (secret !== ADMIN_SECRET) {
       await logAdminEvent(req, {
         action: 'ADMIN_DELETE_DENIED',
@@ -226,7 +219,6 @@ app.post('/api/documents/delete', async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Önce veritabanındaki kaydı bul
     const { data: doc, error: fetchError } = await supabase
       .from('documents')
       .select('*')
@@ -238,7 +230,6 @@ app.post('/api/documents/delete', async (req, res) => {
       return res.status(404).json({ error: 'Document not found' });
     }
 
-    // Storage'tan dosyayı sil
     if (doc.file) {
       const { error: delError } = await supabase.storage
         .from('atlas-documents')
@@ -249,7 +240,6 @@ app.post('/api/documents/delete', async (req, res) => {
       }
     }
 
-    // Tablo kaydını sil
     const { error: deleteRowError } = await supabase
       .from('documents')
       .delete()
@@ -260,7 +250,6 @@ app.post('/api/documents/delete', async (req, res) => {
       return res.status(500).json({ error: 'Failed to delete metadata' });
     }
 
-    // Başarılı DELETE logu
     await logAdminEvent(req, {
       action: 'ADMIN_DELETE_OK',
       fileName: doc.file || null,
@@ -275,7 +264,7 @@ app.post('/api/documents/delete', async (req, res) => {
 });
 
 
-// --- GENERIC LOG ENDPOINT (frontend logger.js kullanıyor) ---
+// --- GENERIC LOG ENDPOINT (frontend logger.js) ---
 app.post('/api/log', async (req, res) => {
   const ip = getClientIp(req);
   const userAgent = req.headers['user-agent'] || null;
